@@ -143,29 +143,84 @@
       // Function to handle the synthesis process
       function startSynthesis() {
         if (!isProcessing) {
-            isProcessing = true;
-            const audioContainer = document.getElementById('audioContainer');
-            audioContainer.innerHTML = '<div class="loading">Generating audio... Please wait...</div>';
-            
-            fetch('/synthesize_voice', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    pollForNewAudio();
-                } else {
-                    audioContainer.innerHTML = '<div class="error">Error generating audio</div>';
-                    isProcessing = false;
-                }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                audioContainer.innerHTML = '<div class="error">Error generating audio</div>';
+          isProcessing = true;
+          const audioContainer = document.getElementById("audioContainer");
+          audioContainer.innerHTML =
+            '<div class="loading">Generating audio... Please wait...</div>';
+
+          fetch("/synthesize_voice", {
+            method: "POST",
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "success") {
+                pollForNewAudio();
+              } else {
+                audioContainer.innerHTML =
+                  '<div class="error">Error generating audio</div>';
                 isProcessing = false;
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              audioContainer.innerHTML =
+                '<div class="error">Error generating audio</div>';
+              isProcessing = false;
             });
         }
-    }
+      }
+      // Function to check for "read email" command
+      function checkForReadEmail() {
+        fetch("/transcription")
+          .then((response) => response.json())
+          .then((data) => {
+            const command = data.transcription.toLowerCase();
+            if (
+              command === "read email" ||
+              command === "read e-mail" ||
+              command === "read email." ||
+              command === "read e-mail." ||
+              command === "read e-mail!"
+            ) {
+              console.log("Voice command detected: read email");
+              startSynthesis();
+            }
+          })
+          .catch((error) =>
+            console.error("Error checking transcription:", error)
+          );
+      }
+
+      // Handle manual synthesis button
+      function handleManualSynthesis(event) {
+        event.preventDefault();
+        startSynthesis();
+      }
+
+      // Initialize everything when the page loads
+      window.onload = function () {
+        // Set up the form handler
+        const form = document.getElementById("synthesisForm");
+        if (form) {
+          form.addEventListener("submit", handleManualSynthesis);
+        }
+
+        // Start checking for voice commands
+        setInterval(checkForReadEmail, 1000);
+
+        // If there's already an audio file, display it
+        fetch("/current_audio")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.audio_file) {
+              currentAudioFile = data.audio_file;
+              updateAudioPlayer(data.audio_file);
+            }
+          })
+          .catch((error) =>
+            console.error("Error checking current audio:", error)
+          );
+      };
     </script>
   </head>
   <body>
