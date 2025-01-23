@@ -224,53 +224,38 @@
     </script>
   </head>
   <body>
-    <div class="container">
-      <h1>Unread Emails to Speech</h1>
+    <h1>Unread Emails to Speech</h1>
 
-      {% if emails %}
-      <ul>
-        {% for email in emails %}
-        <li>
-          <div class="email-header">
-            <strong>From:</strong> {{ email.from }}<br />
-            <strong>Subject:</strong> {{ email.subject }}
-          </div>
-          <div class="email-body">
-            <strong>Body:</strong><br />{{ email.body }}
-          </div>
+    {% if emails %}
+    <ul>
+      {% for email in emails %}
+      <li>
+        <strong>From:</strong> {{ email.from }}<br />
+        <strong>Subject:</strong> {{ email.subject }}<br />
+        <strong>Body:</strong> <br />{{ email.body }}<br /><br />
+      </li>
+      {% endfor %}
+    </ul>
 
-          <!-- Button to synthesize audio for this email -->
-          <form action="/synthesize_email" method="POST">
-            <input
-              type="hidden"
-              name="email_subject"
-              value="{{ email.subject }}"
-            />
-            <input type="hidden" name="email_from" value="{{ email.from }}" />
-            <input type="hidden" name="email_body" value="{{ email.body }}" />
-            <button type="submit">Synthesize Audio</button>
-          </form>
-        </li>
-        {% endfor %}
-      </ul>
+    <form id="synthesisForm">
+      <button type="submit">Synthesize Audio for All Unread Emails</button>
+    </form>
 
-      <!-- Button to synthesize audio for all emails -->
-      <div style="text-align: center">
-        <form action="/synthesize" method="POST">
-          <button type="submit">Synthesize Audio for All Unread Emails</button>
-        </form>
-      </div>
-      {% endif %} {% if audio_file %}
-      <div class="audio-section">
-        <h3>Audio Generated:</h3>
-        <audio controls>
-          <source
-            src="{{ url_for('serve_audio', filename=audio_file.split('/')[-1]) }}"
-            type="audio/wav"
-          />
-          Your browser does not support the audio element.
-        </audio>
-      </div>
+    <p style="text-align: center; font-size: 14px; color: #7f8c8d">
+      <small>You can also say "read email" to trigger synthesis</small>
+    </p>
+    {% endif %}
+
+    <div id="audioContainer">
+      {% if audio_file %}
+      <h3 style="text-align: center; color: #27ae60">Audio Generated:</h3>
+      <audio controls autoplay>
+        <source
+          src="{{ url_for('serve_audio', filename=audio_file) }}"
+          type="audio/wav"
+        />
+        Your browser does not support the audio element.
+      </audio>
       {% endif %}
     </div>
   </body>
