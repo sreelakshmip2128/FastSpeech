@@ -174,53 +174,45 @@ def serve_audio(filename):
     # Serve the audio file
     return send_from_directory(OUTPUT_DIR, filename)
 
-@app.route('/synthesize_email', methods=['POST'])
-def synthesize_email():
-    email_subject = request.form['email_subject']
-    email_from = request.form['email_from']
-    email_body = request.form['email_body']
+@app.route('/synthesize_voice', methods=['POST'])
+def synthesize_voice():
+    global current_audio_file
+    emails = fetch_unread_emails()
+    combined_text = "\n\n".join([
+        f"From: {email['from']}.\nSubject: {email['subject']}.\nBody: {email['body']}"
+        for email in emails
+    ])    
     
-    if '<' in email_from:
-        email_from = email_from.split('<')[0].strip()
-
-    # Combine email details into a single string
-    email_text = f"From: {email_from}.Subject: {email_subject}.Body: {email_body}."
-
-    # Generate a unique identifier for the output file
     file_id = str(int(time.time())) + ''.join(random.choices(string.ascii_letters + string.digits, k=6))
     output_file = f"{file_id}.wav"
     output_file_path = os.path.join(OUTPUT_DIR, output_file)
 
-    # Specify the full path to the virtual environment's Python
     python_bin = r'D:\fast\FastSpeech2\newenv\Scripts\python.exe'
-
-    # Command to run the synthesis script using the virtual environment's Python
     command = [
         python_bin, 'synthesize.py',
-        '--text', email_text,
-        '--restore_step', '900000',  # Set the appropriate restore step
+        '--text', combined_text,
+        '--restore_step', '900000',
         '--mode', 'single',
-        '--file_id', file_id,  # Pass the file_id to the synthesis script
+        '--file_id', file_id,
         '-p', 'config/LJSpeech/preprocess.yaml',
         '-m', 'config/LJSpeech/model.yaml',
         '-t', 'config/LJSpeech/train.yaml'
     ]
-
+    
     try:
-        # Run the synthesis command and capture the output
         result = subprocess.run(command, check=True, text=True, capture_output=True)
-        print(result.stdout)  # Print stdout for debugging
-        print(result.stderr)  # Print stderr for debugging
-
-        # Return the result with the audio file path
-        return render_template('index.html', audio_file=output_file)
-
+        current_audio_file = output_file
+        return jsonify({
+            "status": "success",
+            "audio_file": output_file
+        })
     except subprocess.CalledProcessError as e:
-        # Log the error message for debugging
         print(f"Error: {e}")
         print(f"Stderr: {e.stderr}")
-        return f"Error: {e.stderr}"
-
+        return jsonify({
+            "status": "error",
+            "message": str(e.stderr)
+        })
 
 def mark_as_read_on_exit():
     # Connect to the Gmail IMAP server
