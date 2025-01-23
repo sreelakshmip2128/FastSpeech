@@ -231,6 +231,67 @@ def mark_as_read_on_exit():
     # Logout from the email server
     mail.logout()
 
+# Integrate Speech-to-Text (STT) functionality
+class STT:
+    def __init__(self):
+        self.recorder = sr.Recognizer()
+        self.data_queue = queue.Queue()
+        self.is_listening = True
+        self.default_mic = self.setup_mic()
+        self.model = WhisperModel("small.en", device="cuda", compute_type="float16")
+
+        self.thread = threading.Thread(target=self.transcribe)
+        self.thread.setDaemon=True
+        self.thread.start()
+
+    def setup_mic(self):
+        import pyaudio
+        p = pyaudio.PyAudio()
+        default_device_index = None
+        try:
+            default_input = p.get_default_input_device_info()
+            default_device_index = default_input["index"]
+        except Exception:
+            pass
+        return default_device_index
+
+    def recorder_callback(self, _, audio_data):
+        audio = io.BytesIO(audio_data.get_wav_data())
+        self.data_queue.put(audio)
+
+    def transcribe(self):
+        global current_transcription, current_audio_file  # Add current_audio_file
+        while self.is_listening:
+            audio_data = self.data_queue.get()
+            if audio_data == 'STOP':
+                break
+            segments, _ = self.model.transcribe(audio_data, language="en")
+            for segment in segments:
+                transcription = segment.text.strip()
+                print(f"Transcribed: {transcription}")
+                if transcription.lower() == "read email" or transcription.lower() == "read e-mail" or transcription.lower() == "read e-mail!" or transcription.lower() == "read e-mail." or transcription.lower() == "read email." or transcription.lower() == "read e-mail!":
+                    print("Triggering email synthesis...")
+                    current_transcription = transcription
+                    try:
+                    # Make a request to synthesize endpoint
+                        response = requests.post('http://localhost:5000/synthesize_voice')
+                        if response.status_code == 200:
+                            data = response.json()
+                            if data.get('status') == 'success':
+                                current_audio_file = data.get('audio_file')
+                                print(f"Audio file generated: {current_audio_file}")
+                    except Exception as e:
+                        print(f"Error triggering synthesis: {e}")
+    def start_listening(self):
+        with sr.Microphone(device_index=self.default_mic) as source:
+            self.recorder.adjust_for_ambient_noise(source)
+        self.recorder.listen_in_background(source, self.recorder_callback)
+
+def start_stt():
+    stt = STT()
+    print("STT initialized and listening...")
+    stt.start_listening()
+
 
 # Register the exit handler to mark emails as read on shutdown
 atexit.register(mark_as_read_on_exit)
