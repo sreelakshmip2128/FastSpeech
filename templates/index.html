@@ -126,6 +126,46 @@
             });
         }
       }
+
+      // Function to update the audio player
+      function updateAudioPlayer(audioFile) {
+        const audioContainer = document.getElementById("audioContainer");
+        const timestamp = new Date().getTime(); // Add timestamp to prevent caching
+        audioContainer.innerHTML = `
+            <h3 style="color: #27ae60;">Audio Generated:</h3>
+            <audio controls autoplay>
+                <source src="/audio/${audioFile}?t=${timestamp}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+        `;
+      }
+
+      // Function to handle the synthesis process
+      function startSynthesis() {
+        if (!isProcessing) {
+            isProcessing = true;
+            const audioContainer = document.getElementById('audioContainer');
+            audioContainer.innerHTML = '<div class="loading">Generating audio... Please wait...</div>';
+            
+            fetch('/synthesize_voice', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    pollForNewAudio();
+                } else {
+                    audioContainer.innerHTML = '<div class="error">Error generating audio</div>';
+                    isProcessing = false;
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                audioContainer.innerHTML = '<div class="error">Error generating audio</div>';
+                isProcessing = false;
+            });
+        }
+    }
     </script>
   </head>
   <body>
