@@ -14,6 +14,17 @@ EMAIL = "sreeragrok1@gmail.com"
 PASSWORD = "lzpe wloy mzpc mzph"  # Use app-specific password if 2FA is enabled
 viewed_email_ids = set()
 
+OUTPUT_DIR = "./output/result/LJSpeech"
+current_transcription = ""
+current_audio_file = ""
+last_transcription = ""
+@app.route('/transcription', methods=['GET'])
+def get_transcription():
+    global current_transcription
+    transcription = current_transcription
+    current_transcription = ""  # Reset after reading
+    return jsonify({"transcription": transcription})
+
 # Function to fetch unread emails from Gmail
 def fetch_unread_emails(mark_as_seen=False):
     # Connect to the Gmail IMAP server
