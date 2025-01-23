@@ -109,6 +109,19 @@ def home():
 # Directory to save the generated audio
 OUTPUT_DIR = "./output/result/LJSpeech"
 
+@app.route('/audio/<filename>')
+def serve_audio(filename):
+    # Serve the audio file
+    return send_from_directory(OUTPUT_DIR, filename)
+
+@app.route('/check_audio/<filename>', methods=['GET'])
+def check_audio(filename):
+    audio_file_path = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(audio_file_path):
+        return jsonify({"status": "ready", "audio_file": filename})
+    else:
+        return jsonify({"status": "processing"})
+
 @app.route('/synthesize', methods=['POST'])
 def synthesize_text():
     emails = fetch_unread_emails()
