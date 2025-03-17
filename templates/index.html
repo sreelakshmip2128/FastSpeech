@@ -58,7 +58,16 @@
             border-left: 4px solid #4CAF50;
         }
         
-        .email-item h3 {
+        .read-email-item {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #9E9E9E; /* Gray border for read emails */
+            opacity: 0.85; /* Slightly faded appearance */
+        }
+        
+        .email-item h3, .read-email-item h3 {
             margin-top: 0;
             margin-bottom: 5px;
             color: #333;
@@ -142,6 +151,31 @@
             margin-top: 20px;
             font-weight: bold;
         }
+        
+        .section-header {
+            margin-top: 30px;
+            color: #555;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+        }
+        
+        .read-emails-section {
+            margin-top: 40px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .secondary-button {
+            background-color: #2196F3;
+        }
+        
+        .secondary-button:hover {
+            background-color: #0b7dda;
+        }
     </style>
 </head>
 <body>
@@ -154,7 +188,7 @@
         <h1>Email Voice Reader</h1>
         
         <div class="voice-control">
-            <p><strong>Voice commands:</strong> Say "read email" to have your emails read aloud.</p>
+            <p><strong>Voice commands:</strong> Say "read email" to have your unread emails read aloud. Say "read archived emails" to hear your read emails.</p>
         </div>
         
         <div id="command-display" class="command-display hidden">
@@ -172,21 +206,22 @@
         {% endif %}
         
         <div class="email-section">
-            <h2>Your Unread Emails</h2>
+            <h2 class="section-header">Your Unread Emails</h2>
             
-            {% if emails %}
+            {% if unread_emails %}
                 <div class="email-list">
-                    {% for email in emails %}
+                    {% for email in unread_emails %}
                         <div class="email-item">
                             <h3>{{ email.subject }}</h3>
                             <div class="email-from">From: {{ email.from }}</div>
+                            <div class="email-date">Date: {{ email.date }} at {{ email.time }}</div>
                             <div class="email-body">{{ email.body }}</div>
                         </div>
                     {% endfor %}
                 </div>
                 
-                <form action="{{ url_for('synthesize') }}" method="post">
-                    <button type="submit">Synthesize All Emails</button>
+                <form action="{{ url_for('synthesize') }}" method="post" class="synthesize-form">
+                    <button type="submit">Synthesize Unread Emails</button>
                 </form>
             {% else %}
                 <div class="no-emails">
@@ -194,18 +229,52 @@
                 </div>
             {% endif %}
         </div>
+        
+        <div class="read-emails-section">
+            <h2 class="section-header">Your Read Emails</h2>
+            
+            {% if read_emails %}
+                <div class="email-list">
+                    {% for email in read_emails %}
+                        <div class="read-email-item">
+                            <h3>{{ email.subject }}</h3>
+                            <div class="email-from">From: {{ email.from }}</div>
+                            <div class="email-date">Date: {{ email.date }} at {{ email.time }}</div>
+                            <div class="email-body">{{ email.body }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <form action="{{ url_for('synthesize_read') }}" method="post" class="synthesize-form">
+                    <button type="submit" class="secondary-button">Synthesize Read Emails</button>
+                </form>
+            {% else %}
+                <div class="no-emails">
+                    <p>No read emails found.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="button-group" style="margin-top: 30px;">
+            <button type="button" onclick="window.location.href='{{ url_for('compose_email') }}'">Compose New Email</button>
+        </div>
     </div>
     
     <script>
         // Check for new voice commands every 1 second
         setInterval(checkCommands, 1000);
         
+        // In index.html script tag
         function checkCommands() {
             fetch('/check_commands')
                 .then(response => response.json())
-                .then(data => {
+                .then(data => { 
                     // If there's a command
                     if (data.command) {
+                        if (data.compose_email) {
+                            window.location.href = "/compose_email";
+                            return;
+                        }
                         // Show the command display area
                         const commandDisplay = document.getElementById('command-display');
                         commandDisplay.classList.remove('hidden');
@@ -213,15 +282,65 @@
                         // Update the last command text
                         document.getElementById('last-command').textContent = data.command;
                         
+                        // If there's an audio file to play
+                        if (data.audio_file) {
+                            // Create or update the audio player if it exists
+                            let audioElement = document.getElementById('email-audio');
+                            let playerContainer = document.querySelector('.player-container');
+                            
+                            // If the audio element doesn't exist, create it
+                            if (!audioElement) {
+                                // Create the player container if it doesn't exist
+                                if (!playerContainer) {
+                                    playerContainer = document.createElement('div');
+                                    playerContainer.className = 'player-container';
+                                    playerContainer.innerHTML = '<h2>Audio Playback</h2>';
+                                    
+                                    // Insert it after the command display
+                                    const emailSection = document.querySelector('.email-section');
+                                    emailSection.parentNode.insertBefore(playerContainer, emailSection);
+                                }
+                                
+                                audioElement = document.createElement('audio');
+                                audioElement.id = 'email-audio';
+                                audioElement.className = 'audio-controls';
+                                audioElement.controls = true;
+                                
+                                playerContainer.appendChild(audioElement);
+                            }
+                            
+                            // Set the audio source
+                            audioElement.src = `/audio/${data.audio_file}`;
+                            
+                            // Make sure the container is visible
+                            playerContainer.style.display = 'block';
+                            
+                            // Load and play the audio
+                            audioElement.load();
+                            audioElement.play();
+                        }
+                        
                         // If there's a command to reload, refresh the page
                         if (data.reload) {
-                            location.reload();
+                            // location.reload(); - We don't need this anymore as we're handling the audio directly
+                        }
+                        
+                        // If there's a command to compose email, redirect
+                        if (data.compose_email) {
+                            window.location.href = "{{ url_for('compose_email') }}";
                         }
                     }
                 })
                 .catch(error => {
                     console.error('Error checking commands:', error);
                 });
+        }
+        
+        function processCommand(command) {
+            // If the command is to compose email
+            if (command.includes("compose email")) {
+                window.location.href = "{{ url_for('compose_email') }}";
+            }
         }
         
         // Auto-play audio if present
@@ -232,27 +351,65 @@
                     console.log('Auto-play prevented by browser:', e);
                 });
             }
+            
+            // Add event listeners to all forms with class 'synthesize-form'
+            document.querySelectorAll('.synthesize-form').forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault(); // Prevent full page reload
+                    
+                    fetch(this.action, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Get the audio element or create one if it doesn't exist
+                            let audioElement = document.getElementById('email-audio');
+                            let playerContainer = document.querySelector('.player-container');
+                            
+                            if (!audioElement) {
+                                if (!playerContainer) {
+                                    playerContainer = document.createElement('div');
+                                    playerContainer.className = 'player-container';
+                                    playerContainer.innerHTML = '<h2>Audio Playback</h2>';
+                                    
+                                    // Insert after the command display or at the top of the container
+                                    const commandDisplay = document.getElementById('command-display');
+                                    const container = document.querySelector('.container');
+                                    
+                                    if (commandDisplay) {
+                                        container.insertBefore(playerContainer, commandDisplay.nextSibling);
+                                    } else {
+                                        const emailSection = document.querySelector('.email-section');
+                                        container.insertBefore(playerContainer, emailSection);
+                                    }
+                                }
+                                
+                                audioElement = document.createElement('audio');
+                                audioElement.id = 'email-audio';
+                                audioElement.className = 'audio-controls';
+                                audioElement.controls = true;
+                                
+                                playerContainer.appendChild(audioElement);
+                            }
+                            
+                            // Update the audio source
+                            audioElement.src = `/audio/${data.audio_file}`;
+                            
+                            // Make sure the container is visible
+                            playerContainer.style.display = 'block';
+                            
+                            // Load and play the audio
+                            audioElement.load();
+                            audioElement.play();
+                        } else {
+                            alert(data.error || "An error occurred while synthesizing.");
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                });
+            });
         });
-        document.querySelector('form').addEventListener('submit', function(event) {
-          event.preventDefault(); // Prevent full page reload
-      
-          fetch('/synthesize', {
-              method: 'POST'
-          })
-          .then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  const audioElement = document.getElementById('email-audio');
-                  audioElement.src = `/audio/${data.audio_file}`;
-                  audioElement.load();
-                  audioElement.play();
-              } else {
-                  alert(data.error || "An error occurred while synthesizing.");
-              }
-          })
-          .catch(error => console.error('Error:', error));
-      });
-      
     </script>
 </body>
 </html>

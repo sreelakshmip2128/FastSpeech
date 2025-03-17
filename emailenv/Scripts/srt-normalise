@@ -1,4 +1,4 @@
-#!D:\Main Project\EmailSynth\emailenv\Scripts\python.exe
+#!D:\final-phase-project\FastSpeech\emailenv\Scripts\python.exe
 
 """Takes a badly formatted SRT file and outputs a strictly valid one."""
 

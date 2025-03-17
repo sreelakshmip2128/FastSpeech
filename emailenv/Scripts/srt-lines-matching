@@ -1,4 +1,4 @@
-#!D:\Main Project\EmailSynth\emailenv\Scripts\python.exe
+#!D:\final-phase-project\FastSpeech\emailenv\Scripts\python.exe
 
 """Filter subtitles that match or don't match a particular pattern."""
 

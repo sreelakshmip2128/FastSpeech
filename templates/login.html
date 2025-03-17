@@ -141,7 +141,8 @@
       }
 
       input[type="text"],
-      input[type="password"] {
+      input[type="password"],
+      input[type="email"] {
         width: 100%;
         padding: 10px;
         border: 1px solid #ddd;
@@ -151,7 +152,8 @@
       }
 
       input[type="text"]:focus,
-      input[type="password"]:focus {
+      input[type="password"]:focus,
+      input[type="email"]:focus {
         border-color: #4caf50;
         outline: none;
       }
@@ -166,23 +168,55 @@
       .toggle-btn:hover {
         background-color: #5a6268;
       }
+      
+      .register-link {
+        margin-top: 20px;
+        color: #6c757d;
+      }
+      
+      .register-link a {
+        color: #4caf50;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      
+      .register-link a:hover {
+        text-decoration: underline;
+      }
+      
+      .voice-instructions {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 20px;
+        text-align: left;
+      }
+      
+      .voice-instructions h3 {
+        margin-top: 0;
+        color: #495057;
+      }
+      
+      .voice-instructions ul {
+        padding-left: 20px;
+      }
+      
+      .voice-instructions li {
+        margin-bottom: 5px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Welcome</h1>
-      <p class="subtitle">Please login to continue</p>
+      <h1>Smart Login System</h1>
+      <p class="subtitle">Please login to access your emails</p>
 
-      <div class="voice-control">
-        <p><strong>Voice commands:</strong></p>
-        <ul>
-            <li>"use face" - Switch to face recognition login</li>
-            <li>"manual" - Switch to manual login</li>
-            <li>"username [value]" - Enter username (e.g., "username yourusername")</li>
-            <li>"password [value]" - Enter password (e.g., "password pass123")</li>
-            <li>"login now" - Submit the login form</li>
-        </ul>
-    </div>
+      {% if error %}
+      <div class="status-message error">
+        {{ error }}
+      </div>
+      {% endif %}
 
       <div id="command-display" class="command-display hidden">
         <p>Recognized: <span id="last-command">None</span></p>
@@ -202,16 +236,16 @@
 
       <!-- Manual Login Section -->
       <div id="manual-login" class="login-section hidden">
-        <h2>Manual Login</h2>
+        <h2>Email Login</h2>
         <form id="login-form" action="/manual_login" method="post">
           <div class="form-group">
-            <label for="username">Username:</label>
+            <label for="email">Email Address:</label>
             <input
-              type="text"
-              id="username"
-              name="username"
+              type="email"
+              id="email"
+              name="email"
               required
-              placeholder="Enter your username"
+              placeholder="Enter your email"
             />
           </div>
           <div class="form-group">
@@ -231,8 +265,22 @@
       <div id="status-message" class="status-message info hidden"></div>
 
       <button id="toggle-login-button" class="toggle-btn">
-        Switch to Manual Login
+        Switch to Email Login
       </button>
+      <div class="links">
+        <a href="{{ url_for('register_face') }}">Register Face</a>
+    </div>
+      
+      <div class="voice-instructions">
+        <h3>Voice Commands Available:</h3>
+        <ul>
+          <li>"Use face" or "Face login" - Switch to face recognition</li>
+          <li>"Manual" or "Email login" - Switch to email login</li>
+          <li>"Email [your-email]" - Fill in your email</li>
+          <li>"Password [your-password]" - Fill in your password</li>
+          <li>"Submit" or "Log in now" - Submit the login form</li>
+        </ul>
+      </div>
     </div>
 
     <script>
@@ -260,7 +308,7 @@
           // Switch to face login
           manualLogin.classList.add("hidden");
           faceLogin.classList.remove("hidden");
-          toggleLoginButton.textContent = "Switch to Manual Login";
+          toggleLoginButton.textContent = "Switch to Email Login";
           currentLoginMethod = "face";
         }
       }
@@ -318,8 +366,7 @@
             // Verification failed
             clearInterval(checkInterval);
             verificationStarted = false;
-            statusMessage.textContent =
-              "Verification failed. Please try again.";
+            statusMessage.textContent = data.message || "Verification failed. Please try again.";
             statusMessage.className = "status-message error";
             startFaceButton.disabled = false;
           }
@@ -335,7 +382,6 @@
       }
 
       // Check for voice commands
-      // Add this to your existing login.html script section
       function checkCommands() {
         fetch("/check_commands")
           .then((response) => response.json())
@@ -358,13 +404,13 @@
                 if (currentLoginMethod !== "face") {
                   manualLogin.classList.add("hidden");
                   faceLogin.classList.remove("hidden");
-                  toggleLoginButton.textContent = "Switch to Manual Login";
+                  toggleLoginButton.textContent = "Switch to Email Login";
                   currentLoginMethod = "face";
                 }
               } else if (
                 command.includes("manual") ||
-                command.includes("password login") ||
-                command.includes("username login")
+                command.includes("email login") ||
+                command.includes("password login")
               ) {
                 if (currentLoginMethod !== "manual") {
                   faceLogin.classList.add("hidden");
@@ -374,15 +420,15 @@
                 }
               }
 
-              // Handle username input
-              if (command.includes("username")) {
-                const usernameField = document.getElementById("username");
-                // Extract the username from the command
-                // Format: "username [value]"
-                const match = command.match(/username\s+(\S+)/);
+              // Handle email input
+              if (command.includes("email")) {
+                const emailField = document.getElementById("email");
+                // Extract the email from the command
+                // Format: "email [value]"
+                const match = command.match(/email\s+(\S+)/);
                 if (match && match[1]) {
-                  usernameField.value = match[1];
-                  statusMessage.textContent = `Username set to: ${match[1]}`;
+                  emailField.value = match[1];
+                  statusMessage.textContent = `Email set to: ${match[1]}`;
                   statusMessage.className = "status-message info";
                   statusMessage.classList.remove("hidden");
                 }
@@ -411,6 +457,9 @@
                 if (currentLoginMethod === "manual") {
                   const form = document.getElementById("login-form");
                   form.submit();
+                } else if (currentLoginMethod === "face" && !verificationStarted) {
+                  // Start face verification if not already started
+                  startFaceButton.click();
                 }
               }
 

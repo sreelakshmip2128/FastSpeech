@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Capture Face</title>
+    <style>
+        /* Reset some basic elements */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        p {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #7f8c8d;
+        }
+
+        #video-container {
+            margin: 20px auto;
+            width: 640px;
+            height: 480px;
+            border: 1px solid #ccc;
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #capture-btn {
+            margin: 20px auto;
+            display: block;
+            padding: 12px 30px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #capture-btn:hover {
+            background-color: #2980b9;
+        }
+
+        #capture-btn:active {
+            transform: translateY(1px);
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .links {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .links a {
+            color: #3498db;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: color 0.3s ease;
+        }
+
+        .links a:hover {
+            color: #2980b9;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 700px) {
+            #video-container {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 4/3;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Capture Your Face</h1>
+        <p>Please position your face in the center of the frame and click "Capture Face".</p>
+        
+        <div id="video-container">
+            <video id="video" autoplay></video>
+        </div>
+        
+        <button id="capture-btn">Capture Face</button>
+        <canvas id="canvas" width="640" height="480"></canvas>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="links">
+            <a href="{{ url_for('register_face') }}">Back to Registration</a> |
+            <a href="{{ url_for('login') }}">Back to Login</a>
+        </div>
+    </div>
+    
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const statusDiv = document.getElementById('status');
+        
+        // Access webcam
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                statusDiv.textContent = 'Error accessing camera: ' + err.message;
+                statusDiv.className = 'status error';
+            }
+        }
+        
+        // Capture image
+        captureBtn.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to base64
+            const imgData = canvas.toDataURL('image/jpeg');
+            
+            // Send to server
+            fetch('/save_face', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: imgData }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    statusDiv.textContent = data.message + ' Redirecting to login...';
+                    statusDiv.className = 'status success';
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("login") }}';
+                    }, 2000);
+                } else {
+                    statusDiv.textContent = data.message;
+                    statusDiv.className = 'status error';
+                }
+            })
+            .catch(error => {
+                statusDiv.textContent = 'Error: ' + error.message;
+                statusDiv.className = 'status error';
+            });
+        });
+        
+        // Start the camera when page loads
+        setupCamera();
+    </script>
+</body>
+</html>
